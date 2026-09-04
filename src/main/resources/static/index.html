@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <title>LOLdomizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4">
+<div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-xl w-full border border-gray-700">
+    <h1 class="text-3xl font-extrabold text-emerald-400 text-center mb-6">LOLdomizer</h1>
+
+    <!-- Tela 1: Configuração Inicial -->
+    <div id="step-1" class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium mb-1">Quantidade de Jogadores (1 a 5):</label>
+            <input id="qtd-players" type="number" min="1" max="5" value="5" class="w-full bg-gray-700 p-2.5 rounded border border-gray-600 focus:ring-emerald-500 focus:outline-none" />
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Modalidade de Sorteio:</label>
+            <select id="opcao-sorteio" class="w-full bg-gray-700 p-2.5 rounded border border-gray-600 focus:ring-emerald-500 focus:outline-none">
+                <option value="1">Escolher Lane e Sortear Campeão</option>
+                <option value="2">Sortear Lane e Campeão</option>
+            </select>
+        </div>
+        <button onclick="gerarFormularioJogadores()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-2.5 rounded transition">Próximo</button>
+    </div>
+
+    <!-- Tela 2: Nomes, Lanes e Builds -->
+    <div id="step-2" class="hidden space-y-4">
+        <div id="jogadores-container" class="space-y-3"></div>
+        <button onclick="enviarSorteio()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-2.5 rounded transition">Realizar Sorteio</button>
+    </div>
+
+    <!-- Tela 3: Resultado -->
+    <div id="step-3" class="hidden space-y-4">
+        <h2 class="text-xl font-bold text-emerald-400">Resultado do Sorteio:</h2>
+        <div id="resultado-container" class="space-y-4"></div>
+        <button onclick="reiniciar()" class="w-full bg-gray-700 hover:bg-gray-600 font-bold py-2.5 rounded transition mt-4">Novo Sorteio</button>
+    </div>
+</div>
+
+<script>
+    let opcaoSelecionada = 1;
+    let totalJogadores = 0;
+
+    function gerarFormularioJogadores() {
+        totalJogadores = parseInt(document.getElementById('qtd-players').value);
+        opcaoSelecionada = parseInt(document.getElementById('opcao-sorteio').value);
+
+        const container = document.getElementById('jogadores-container');
+        container.innerHTML = '';
+
+        for (let i = 1; i <= totalJogadores; i++) {
+            container.innerHTML += `
+          <div class="bg-gray-700 p-3 rounded space-y-2">
+            <div class="flex gap-2">
+              <input type="text" id="nome-${i}" placeholder="Nome Jogador ${i}" class="flex-1 bg-gray-800 p-2 rounded border border-gray-600 text-sm focus:ring-emerald-500 focus:outline-none" required />
+              ${opcaoSelecionada === 1 ? `
+                <select id="lane-${i}" class="bg-gray-800 p-2 rounded border border-gray-600 text-sm focus:ring-emerald-500 focus:outline-none">
+                  <option value="top">TOP</option>
+                  <option value="jg">JG</option>
+                  <option value="mid">MID</option>
+                  <option value="adc">ADC</option>
+                  <option value="sup">SUP</option>
+                </select>` : ''}
+            </div>
+            <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+              <input type="checkbox" id="build-${i}" class="rounded text-emerald-500 focus:ring-emerald-500 bg-gray-800 border-gray-600" /> Sortear Build?
+            </label>
+          </div>`;
+        }
+
+        document.getElementById('step-1').classList.add('hidden');
+        document.getElementById('step-2').classList.remove('hidden');
+    }
+
+    async function enviarSorteio() {
+        const payload = {
+            opcaoSorteio: opcaoSelecionada,
+            jogadores: []
+        };
+
+        for (let i = 1; i <= totalJogadores; i++) {
+            payload.jogadores.push({
+                nome: document.getElementById(`nome-${i}`).value || `Jogador ${i}`,
+                lane: opcaoSelecionada === 1 ? document.getElementById(`lane-${i}`).value : null,
+                sortearBuild: document.getElementById(`build-${i}`).checked
+            });
+        }
+
+        try {
+            const response = await fetch('http://localhost:8080/api/sorteio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            const resContainer = document.getElementById('resultado-container');
+
+            // Limpa o container e adiciona as classes para espaçamento
+            resContainer.className = "space-y-4";
+
+            resContainer.innerHTML = data.map(j => {
+                const champImgName = j.campeao.toLowerCase().replace(/[' ]/g, '');
+                const laneImgName = j.lane.toLowerCase();
+
+                let buildIconHtml = '';
+                let buildTextHtml = '';
+
+                if (j.build !== "Sem build adicional.") {
+                    let redeStr = "default";
+                    if(j.build.includes("WhatsApp")) redeStr = "whatsapp";
+                    if(j.build.includes("YouTube")) redeStr = "youtube";
+                    if(j.build.includes("Twitch")) redeStr = "twitch";
+                    if(j.build.includes("Facebook")) redeStr = "facebook";
+
+                    // Busca em /img/redes/
+                    buildIconHtml = `<img src="/img/redes/${redeStr}.png" alt="${redeStr}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/22c55e/ffffff?text=B'">`;
+                    buildTextHtml = `<span class="text-white text-sm font-medium capitalize">Build ${redeStr}</span>`;
+                } else {
+                    // Busca em /img/redes/ a imagem de "sem build"
+                    buildIconHtml = `<img src="/img/redes/nenhuma.png" alt="Sem build" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/555555/ffffff?text=X'">`;
+                    buildTextHtml = `<span class="text-gray-400 text-sm">Sem build</span>`;
+                }
+
+                return `
+            <div class="border border-gray-300 rounded p-4 bg-transparent relative">
+              <h3 class="text-white font-bold text-lg mb-4 leading-none">${j.nome}</h3>
+
+              <div class="flex flex-row gap-8 items-end">
+                <!-- Ícone da Lane (/img/lanes/) -->
+                <div class="flex flex-col items-center">
+                  <img src="/img/lanes/${laneImgName}.png" alt="${j.lane}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/333333/ffffff?text=${j.lane}'">
+                  <span class="text-white text-sm font-medium capitalize">${j.lane}</span>
+                </div>
+
+                <!-- Ícone do Campeão (/img/campeoes/) -->
+                <div class="flex flex-col items-center">
+                  <img src="/img/campeoes/${champImgName}.png" alt="${j.campeao}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/333333/ffffff?text=${j.campeao.substring(0,3)}'">
+                  <span class="text-white text-sm font-medium capitalize">${j.campeao}</span>
+                </div>
+
+                <!-- Ícone da Build (/img/redes/) -->
+                <div class="flex flex-col items-center">
+                  ${buildIconHtml}
+                  ${buildTextHtml}
+                </div>
+              </div>
+            </div>
+          `;
+            }).join('');
+
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-3').classList.remove('hidden');
+        } catch (err) {
+            alert('Erro ao conectar com a API Spring Boot. Verifique se o backend Java está rodando.');
+        }
+    }
+
+    function reiniciar() {
+        document.getElementById('step-3').classList.add('hidden');
+        document.getElementById('step-1').classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
