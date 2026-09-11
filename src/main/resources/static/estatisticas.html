@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title >LOLdomizer - Meu Histórico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #2d3748;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+    </style>
+</head>
+<body class="bg-[#1a202c] min-h-screen font-sans text-white p-6">
+
+<div class="max-w-7xl mx-auto flex justify-between items-center mb-8">
+    <h1 class="text-4xl font-semibold text-[#C79B3B] mb-6">Meu Historico</h1>
+    <div class="flex gap-4">
+        <a href="/sorteio.html" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded text-[#C79B3B] font-bold transition-colors">Jogar novamente</a>
+        <a href="/index.html" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded text-[#C79B3B] font-bold transition-colors">Voltar ao Menu</a>
+    </div>
+</div>
+
+<!-- Layout Principal -->
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+    <!-- Coluna Esquerda (Pendentes e Últimas Partidas) -->
+    <div class="lg:col-span-4 flex flex-col gap-8">
+
+        <!-- Esperando Resultado -->
+        <div>
+            <h2 class="text-lg mb-3">Partidas esperando resultado</h2>
+            <div id="pendentes-container" class="bg-[#2d3748] rounded-3xl p-4 min-h-[80px] flex flex-col gap-3">
+                <p class="text-gray-500 italic text-sm text-center">Nenhuma partida pendente</p>
+            </div>
+        </div>
+
+        <!-- Últimas Partidas -->
+        <div>
+            <h2 class="text-2xl mb-3 text-center">ultimas partidas</h2>
+            <div class="bg-[#2d3748] rounded shadow-lg p-4 flex flex-col">
+
+                <!-- Indicadores de Coluna -->
+                <div class="flex items-center justify-between gap-4 px-2 text-xs text-gray-400 font-bold uppercase border-b border-gray-600 pb-2 mb-3">
+                    <span class="w-8 text-center">Rota</span>
+                    <span class="w-8 text-center">Camp</span>
+                    <span class="w-8 text-center">Build</span>
+                    <span class="flex-1 text-right pr-2">V/D</span> <!-- pr-2 para alinhar com a barra de rolagem -->
+                </div>
+
+                <!-- Lista de Histórico -->
+                <!-- max-h-[282px] é a altura exata para mostrar 5 itens. overflow-y-auto cria a barra de rolagem -->
+                <div id="historico-container" class="flex flex-col gap-2 max-h-[282px] overflow-y-auto pr-2 custom-scrollbar">
+                    <p class="text-gray-500 italic text-sm text-center mt-4">Nenhum histórico encontrado</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas Geral -->
+    <div class="lg:col-span-8 bg-[#2d3748] rounded shadow-lg p-8">
+
+        <!-- Destaques Principais -->
+        <div class="grid grid-cols-2 gap-8 mb-12">
+            <!-- Melhor Lane -->
+            <div class="flex flex-col items-center">
+                <div id="best-lane-img" class="w-32 h-32 bg-gray-700 flex items-center justify-center text-center font-bold p-2 text-sm shadow-md mb-3 rounded">
+                    Sem dados<br>suficientes
+                </div>
+                <p id="best-lane-text" class="text-sm font-semibold">% de vitoria da rota</p>
+            </div>
+
+            <!-- Melhor Campeão -->
+            <div class="flex flex-col items-center">
+                <div id="best-champ-img" class="w-32 h-32 bg-gray-700 flex items-center justify-center text-center font-bold p-2 text-sm shadow-md mb-3 rounded">
+                    Sem dados<br>suficientes
+                </div>
+                <p id="best-champ-text" class="text-sm font-semibold">% de vitoria com o campeao</p>
+            </div>
+        </div>
+
+        <!-- Top 5 Lanes -->
+        <div class="grid grid-cols-2 gap-8">
+            <!-- Lista Top 5 Lanes -->
+            <div class="bg-[#1a202c] rounded-[2rem] p-6 min-h-[200px]">
+                <h3 class="text-center text-sm font-bold mb-4 leading-tight">Rank lanes</h3>
+                <div id="top-lanes" class="flex flex-col gap-2"></div>
+            </div>
+
+            <!-- Lista Top 5 Campeões -->
+            <div class="bg-[#1a202c] rounded-[3rem] p-6 min-h-[200px]">
+                <h3 class="text-center text-sm font-bold mb-4 leading-tight">TOP 5 Campeões</h3>
+                <div id="top-champs" class="flex flex-col gap-2"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function formatName(name) { return name ? name.toLowerCase().replace(/[' ]/g, '') : ''; }
+
+    async function carregarPendentes() {
+        const res = await fetch('/api/partidas/pendentes');
+        if(res.ok) {
+            const partidas = await res.json();
+            const container = document.getElementById('pendentes-container');
+            if(partidas.length > 0) {
+                container.innerHTML = partidas.map(p => `
+                        <div class="bg-gray-700 p-3 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 border border-gray-600">
+                            <span class="font-bold text-sm w-full md:w-auto text-center">${p.campeao} - ${p.lane}</span>
+                            <div class="flex gap-2 w-full md:w-auto justify-center">
+                                <button onclick="registrarResultado(${p.id}, 'VITORIA')" class="bg-green-600 hover:bg-green-500 text-white font-bold py-1 px-3 rounded text-xs transition-colors">V</button>
+                                <button onclick="registrarResultado(${p.id}, 'DERROTA')" class="bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-3 rounded text-xs transition-colors">D</button>
+                                <button onclick="registrarResultado(${p.id}, 'REMAKE')" class="bg-gray-500 hover:bg-gray-400 text-white font-bold py-1 px-3 rounded text-xs transition-colors">RMK</button>
+                            </div>
+                        </div>
+                    `).join('');
+            } else {
+                container.innerHTML = '<p class="text-gray-500 italic text-sm text-center pt-2">Nenhuma partida pendente</p>';
+            }
+        }
+    }
+
+    async function carregarHistorico() {
+        const res = await fetch('/api/partidas/historico');
+        if(res.ok) {
+            const partidas = await res.json();
+            const container = document.getElementById('historico-container');
+            if(partidas.length > 0) {
+                container.innerHTML = partidas.map(p => {
+
+                    let buildIcon = '';
+                    if (p.build && p.build !== "Sem build adicional.") {
+                        let redeStr = "default";
+                        if(p.build.includes("WhatsApp")) redeStr = "whatsapp";
+                        if(p.build.includes("YouTube")) redeStr = "youtube";
+                        if(p.build.includes("Twitch")) redeStr = "twitch";
+                        if(p.build.includes("Facebook")) redeStr = "facebook";
+                        buildIcon = `<img src="/img/redes/${redeStr}.png" class="w-8 h-8 rounded object-cover" title="Build ${redeStr}" onerror="this.style.display='none'">`;
+                    } else {
+                        buildIcon = `<img src="/img/redes/nenhuma.png" class="w-8 h-8 rounded object-cover" title="Sem Build" onerror="this.src='https://via.placeholder.com/32/555555/ffffff?text=X'">`;
+                    }
+
+                    let statusColor = p.status === 'VITORIA' ? 'text-green-400' : p.status === 'DERROTA' ? 'text-red-400' : 'text-gray-400';
+                    let statusText = p.status === 'REMAKE' ? 'Remake' : p.status.charAt(0) + p.status.slice(1).toLowerCase();
+
+                    return `
+                        <div class="border border-gray-600 bg-gray-800 p-2 rounded flex items-center justify-between gap-4">
+                            <div class="w-8 flex justify-center">
+                                <img src="/img/lanes/${formatName(p.lane)}.png" class="w-8 h-8 object-contain" title="${p.lane}" onerror="this.src='https://via.placeholder.com/32/333333/ffffff?text=${p.lane}'">
+                            </div>
+                            <div class="w-8 flex justify-center">
+                                <img src="/img/campeoes/${formatName(p.campeao)}.png" class="w-8 h-8 object-cover rounded" title="${p.campeao}" onerror="this.src='https://via.placeholder.com/32/333333/ffffff?text=C'">
+                            </div>
+                            <div class="w-8 flex justify-center">
+                                ${buildIcon}
+                            </div>
+                            <div class="flex-1 text-right font-bold text-xs ${statusColor}">
+                                ${statusText}
+                            </div>
+                        </div>
+                        `;
+                }).join('');
+            }
+        }
+    }
+
+    async function carregarResumo() {
+        const res = await fetch('/api/partidas/resumo');
+        if(res.ok) {
+            const dados = await res.json();
+
+            const bestLane = dados.lanes.length > 0 ? dados.lanes[0] : null;
+
+            const bestChamp = dados.melhorCampeaoDaLane;
+
+            if (bestLane) {
+                document.getElementById('best-lane-img').innerHTML = `<img src="/img/lanes/${formatName(bestLane.nome)}.png" class="w-full h-full object-cover rounded" onerror="this.style.display='none'"><span class="absolute text-white font-bold bg-black/50 w-full text-center bottom-0">${bestLane.nome.toUpperCase()}</span>`;
+                document.getElementById('best-lane-img').className = "relative w-32 h-32 bg-gray-800 flex items-center justify-center shadow-md mb-3 overflow-hidden rounded";
+                document.getElementById('best-lane-text').textContent = `${bestLane.winrate}% de vitória (${bestLane.totalJogos} jogos)`;
+            }
+
+            if (bestChamp) {
+                document.getElementById('best-champ-img').innerHTML = `<img src="/img/campeoes/${formatName(bestChamp.nome)}.png" class="w-full h-full object-cover rounded" onerror="this.style.display='none'">`;
+                document.getElementById('best-champ-img').className = "relative w-32 h-32 bg-gray-800 flex items-center justify-center shadow-md mb-3 overflow-hidden rounded";
+                document.getElementById('best-champ-text').textContent = `${bestChamp.winrate}% de vitória (${bestChamp.totalJogos} jogos)`;
+            } else {
+
+                document.getElementById('best-champ-img').innerHTML = `Sem dados<br>suficientes`;
+                document.getElementById('best-champ-img').className = "w-32 h-32 bg-gray-700 flex items-center justify-center text-center font-bold p-2 text-sm shadow-md mb-3 rounded";
+                document.getElementById('best-champ-text').textContent = `% de vitoria com o campeao`;
+            }
+
+            document.getElementById('top-lanes').innerHTML = dados.lanes.slice(0, 5).map((l, index) => {
+                let corTexto = l.winrate < 50 ? 'text-red-500' : 'text-green-400';
+                return `<div class="flex justify-between border-b border-gray-700 py-1 text-sm"><span class="uppercase">${index+1}. ${l.nome}</span> <span class="${corTexto} font-bold">${l.winrate}%</span></div>`;
+            }).join('');
+
+            document.getElementById('top-champs').innerHTML = dados.campeoes.slice(0, 5).map((c, index) => {
+                let corTexto = c.winrate < 50 ? 'text-red-500' : 'text-green-400';
+                return `<div class="flex justify-between border-b border-gray-700 py-1 text-sm"><span>${index+1}. ${c.nome}</span> <span class="${corTexto} font-bold">${c.winrate}%</span></div>`;
+            }).join('');
+        }
+    }
+    async function registrarResultado(id, resultado) {
+        await fetch(`/api/partidas/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: resultado })
+        });
+        carregarPendentes();
+        carregarHistorico();
+        carregarResumo();
+    }
+
+    carregarPendentes();
+    carregarHistorico();
+    carregarResumo();
+</script>
+</body>
+</html>

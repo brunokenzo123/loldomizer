@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOLdomizer - Acesso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 h-screen flex items-center justify-center font-sans text-white">
+
+<div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md border border-gray-700">
+    <h1 class="text-3xl font-bold text-center text-[#C79B3B] mb-6">LOLdomizer</h1>
+
+    <div class="space-y-4">
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Usuário</label>
+            <input type="text" id="loginInput" class="w-full p-2 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:border-blue-500" placeholder="Digite seu nome">
+        </div>
+
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Senha</label>
+            <input type="password" id="senhaInput" class="w-full p-2 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:border-blue-500" placeholder="••••••••">
+        </div>
+
+        <p id="mensagem" class="text-sm text-center font-semibold h-4"></p>
+
+        <div class="flex gap-4 mt-6">
+            <button onclick="fazerLogin()" class="w-full bg-[#C79B3B] hover:bg-[#d2af63] font-bold py-2 px-4 rounded transition-colors">
+                Entrar
+            </button>
+            <button onclick="criarConta()" class="w-full bg-gray-600 hover:bg-gray-500 font-bold py-2 px-4 rounded transition-colors">
+                Criar Conta
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function enviarDados(url) {
+        const login = document.getElementById('loginInput').value;
+        const senha = document.getElementById('senhaInput').value;
+        const mensagem = document.getElementById('mensagem');
+
+        if (!login || !senha) {
+            mensagem.textContent = "Preencha todos os campos.";
+            mensagem.className = "text-sm text-center font-semibold text-red-400 h-4";
+            return;
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ login, senha })
+            });
+
+            const texto = await response.text();
+
+            if (response.ok) {
+                mensagem.textContent = texto;
+                mensagem.className = "text-sm text-center font-semibold text-green-400 h-4";
+
+                if (url.includes("login")) {
+                    // Se o login deu certo, redireciona para a página principal
+                    setTimeout(() => window.location.href = "/index.html", 1000);
+                }
+            } else {
+                mensagem.textContent = texto;
+                mensagem.className = "text-sm text-center font-semibold text-red-400 h-4";
+            }
+        } catch (error) {
+            mensagem.textContent = "Erro de conexão com o servidor.";
+            mensagem.className = "text-sm text-center font-semibold text-red-400 h-4";
+        }
+    }
+
+    function fazerLogin() { enviarDados('/api/usuarios/login'); }
+    function criarConta() { enviarDados('/api/usuarios/registrar'); }
+</script>
+</body>
+</html>
