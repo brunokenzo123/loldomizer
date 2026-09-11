@@ -11,7 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sorteio")
 @CrossOrigin(origins = "*") // Permite chamadas do front-end web local
-public class SorteioController {
+    public class SorteioController {
 
     private final SorteioService sorteioService;
 
