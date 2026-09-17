@@ -11,11 +11,40 @@ import java.util.*;
 public class SorteioService {
 
     private final Map<String, List<String>> campeoes = Map.of(
-            "top", List.of("Aatrox", "Ambessa", "Camille", "Darius", "Fiora", "Garen", "Mordekaiser", "Ornn", "Sett", "Yasuo"),
-            "mid", List.of("Ahri", "Akali", "Azir", "Ekko", "LeBlanc", "Lux", "Syndra", "Yasuo", "Yone", "Zed","Locke"),
-            "adc", List.of("Ashe", "Caitlyn", "Draven", "Ezreal", "Jhin", "Jinx", "Kai'Sa", "Lucian", "Vayne", "Xayah"),
-            "sup", List.of("Alistar", "Blitzcrank", "Braum", "Leona", "Lulu", "Morgana", "Nautilus", "Pyke", "Thresh", "Zyra"),
-            "jg",  List.of("Amumu", "Briar", "Ekko", "Graves", "Hecarim", "Kayn", "Lee Sin", "Sejuani", "Vi", "Viego")
+            "top", List.of(
+                    "Aatrox", "Akali", "Ambessa", "Camille", "Cassiopeia", "Cho'Gath", "Darius", "Dr. Mundo", "Fiora",
+                    "Gangplank", "Garen", "Gnar", "Gragas", "Gwen", "Heimerdinger", "Illaoi", "Irelia", "Jax", "Jayce",
+                    "K'Sante", "Karma", "Kayle", "Kennen", "Kled", "Lillia", "Malphite", "Maokai", "Mordekaiser", "Nasus",
+                    "Olaf", "Ornn", "Pantheon", "Poppy", "Quinn", "Renekton", "Riven", "Rumble", "Ryze", "Sejuani", "Sett",
+                    "Shen", "Singed", "Sion", "Smolder", "Tahm Kench", "Teemo", "Trundle", "Tryndamere", "Urgot", "Vayne",
+                    "Volibear", "Warwick", "Wukong", "Yasuo", "Yone", "Yorick", "Zac"
+            ),
+            "jg", List.of(
+                    "Amumu", "Bel'Veth", "Briar", "Diana", "Ekko", "Elise", "Evelynn", "Fiddlesticks", "Gragas", "Graves",
+                    "Hecarim", "Ivern", "Jarvan IV", "Jax", "Karthus", "Kayn", "Kha'Zix", "Kindred", "Lee Sin", "Lillia",
+                    "Master Yi", "Nidalee", "Nocturne", "Nunu e Willump", "Olaf", "Pantheon", "Poppy", "Rammus", "Rek'Sai",
+                    "Rengar", "Sejuani", "Shaco", "Shyvana", "Skarner", "Sylas", "Taliyah", "Talon", "Trundle", "Udyr",
+                    "Vi", "Viego", "Volibear", "Warwick", "Wukong", "Xin Zhao", "Zac", "Zed"
+            ),
+            "mid", List.of(
+                    "Ahri", "Akali", "Akshan", "Anivia", "Annie", "Aurelion Sol", "Azir", "Cassiopeia", "Corki", "Diana",
+                    "Ekko", "Fizz", "Galio", "Gangplank", "Gragas", "Heimerdinger", "Hwei", "Irelia", "Jayce", "Kassadin",
+                    "Katarina", "Kayle", "LeBlanc", "Lissandra", "Locke", "Lucian", "Lux", "Malzahar", "Naafiri", "Neeko",
+                    "Orianna", "Pantheon", "Qiyana", "Ryze", "Smolder", "Sylas", "Syndra", "Taliyah", "Talon", "Tristana",
+                    "Twisted Fate", "Veigar", "Vel'Koz", "Vex", "Viktor", "Vladimir", "Xerath", "Yasuo", "Yone", "Zed",
+                    "Ziggs", "Zoe"
+            ),
+            "adc", List.of(
+                    "Aphelios", "Ashe", "Caitlyn", "Cassiopeia", "Draven", "Ezreal", "Jhin", "Jinx", "Kai'Sa", "Kalista",
+                    "Karthus", "Kog'Maw", "Lucian", "Miss Fortune", "Nilah", "Samira", "Seraphine", "Sivir", "Smolder",
+                    "Swain", "Syndra", "Tristana", "Twitch", "Varus", "Vayne", "Xayah", "Yasuo", "Zeri", "Ziggs"
+            ),
+            "sup", List.of(
+                    "Alistar", "Amumu", "Ashe", "Bardo", "Blitzcrank", "Brand", "Braum", "Camille", "Galio", "Heimerdinger",
+                    "Janna", "Karma", "Leona", "Lulu", "Lux", "Maokai", "Milio", "Morgana", "Nami", "Nautilus", "Neeko",
+                    "Pantheon", "Pyke", "Rakan", "Rell", "Renata Glasc", "Senna", "Seraphine", "Shaco", "Sona", "Soraka",
+                    "Swain", "Tahm Kench", "Taric", "Thresh", "Vel'Koz", "Xerath", "Yuumi", "Zilean", "Zyra"
+            )
     );
 
     private final Map<String, String> builds = Map.of(

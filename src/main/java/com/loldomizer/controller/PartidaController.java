@@ -31,10 +31,25 @@ public class PartidaController {
         Optional<Usuario> usuario = usuarioRepository.findByLogin(login);
 
         if (usuario.isPresent()) {
-            partida.setUsuario(usuario.get());
-            partida.setStatus("PENDENTE");
-            partidaRepository.save(partida);
-            return ResponseEntity.ok("Sorteio registrado!");
+            // Busca se o usuário já tem uma partida aguardando resultado
+            List<Partida> pendentes = partidaRepository.findByUsuarioIdAndStatusOrderByIdDesc(usuario.get().getId(), "PENDENTE");
+
+            Partida p;
+            if (!pendentes.isEmpty()) {
+                // Se já existe, atualiza os dados (isso faz o botão de REFAZER funcionar no banco)
+                p = pendentes.get(0);
+                p.setCampeao(partida.getCampeao());
+                p.setLane(partida.getLane());
+                p.setBuild(partida.getBuild());
+            } else {
+                // Se não existe, cria uma nova do zero
+                p = partida;
+                p.setUsuario(usuario.get());
+                p.setStatus("PENDENTE");
+            }
+
+            partidaRepository.save(p);
+            return ResponseEntity.ok("Sorteio salvo/atualizado!");
         }
         return ResponseEntity.status(403).body("Não autorizado.");
     }

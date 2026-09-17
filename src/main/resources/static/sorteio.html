@@ -32,16 +32,36 @@
     </div>
 
     <!-- Tela 3: Resultado -->
-    <div id="step-3" class="hidden space-y-4">
-        <h2 class="text-xl font-bold text-[#C79B3B]">Resultado do Sorteio:</h2>
-        <div id="resultado-container" class="space-y-4"></div>
-        <button onclick="reiniciar()" class="w-full bg-gray-700 hover:bg-gray-600 font-bold py-2.5 rounded transition mt-4">Novo Sorteio</button>
+    <!-- PASSO 3: Resultado do Sorteio -->
+    <div id="step-3" class="hidden flex-col gap-4">
+
+        <h2 class="text-xl font-bold text-[#C79B3B] mb-2">Resultado do Sorteio:</h2>
+
+        <!-- Onde os cards dos campeões aparecem -->
+        <div id="resultado-container" class="w-full"></div>
+
+        <!-- Botões de Ação Final (Lado a Lado) -->
+        <div class="grid grid-cols-2 gap-4 mt-4">
+            <button onclick="reiniciar()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded transition-colors text-center">
+                Novo Sorteio
+            </button>
+
+            <a href="/index.html" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded transition-colors text-center flex items-center justify-center">
+                Voltar ao Menu
+            </a>
+        </div>
+
     </div>
 </div>
 
 <script>
     let opcaoSelecionada = 1;
     let totalJogadores = 0;
+
+    // Variáveis globais para guardar o estado atual da tela
+    let resultadosGlobais = [];
+    let configsJogadores = [];
+    let indexSouEuGlobal = 0;
 
     function gerarFormularioJogadores() {
         totalJogadores = parseInt(document.getElementById('qtd-players').value);
@@ -52,11 +72,11 @@
 
         for (let i = 1; i <= totalJogadores; i++) {
             container.innerHTML += `
-          <div class="bg-gray-700 p-3 rounded space-y-2">
+          <div class="bg-gray-700 p-3 rounded space-y-2 border border-gray-600 relative">
             <div class="flex gap-2">
-              <input type="text" id="nome-${i}" placeholder="Nome Jogador ${i}" class="flex-1 bg-gray-800 p-2 rounded border border-gray-600 text-sm focus:ring-emerald-500 focus:outline-none" required />
+              <input type="text" id="nome-${i}" placeholder="Nome Jogador ${i}" class="flex-1 bg-gray-800 p-2 rounded border border-gray-600 text-sm focus:ring-[#C79B3B] focus:outline-none" required />
               ${opcaoSelecionada === 1 ? `
-                <select id="lane-${i}" class="bg-gray-800 p-2 rounded border border-gray-600 text-sm focus:ring-emerald-500 focus:outline-none">
+                <select id="lane-${i}" class="bg-gray-800 p-2 rounded border border-gray-600 text-sm focus:ring-[#C79B3B] focus:outline-none">
                   <option value="top">TOP</option>
                   <option value="jg">JG</option>
                   <option value="mid">MID</option>
@@ -64,9 +84,16 @@
                   <option value="sup">SUP</option>
                 </select>` : ''}
             </div>
-            <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
-              <input type="checkbox" id="build-${i}" class="rounded text-emerald-500 focus:ring-emerald-500 bg-gray-800 border-gray-600" /> Sortear Build?
-            </label>
+
+            <div class="flex items-center justify-between mt-2">
+                <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                  <input type="checkbox" id="build-${i}" class="rounded text-[#C79B3B] focus:ring-[#C79B3B] bg-gray-800 border-gray-600" /> Sortear Build?
+                </label>
+
+                <label class="flex items-center gap-2 text-xs font-bold text-[#C79B3B] cursor-pointer">
+                  <input type="radio" name="souEu" value="${i}" ${i === 1 ? 'checked' : ''} class="text-[#C79B3B] focus:ring-[#C79B3B] bg-gray-800 border-gray-600" /> Este sou eu!
+                </label>
+            </div>
           </div>`;
         }
 
@@ -75,107 +102,158 @@
     }
 
     async function enviarSorteio() {
-        const payload = {
-            opcaoSorteio: opcaoSelecionada,
-            jogadores: []
-        };
-
+        configsJogadores = [];
         for (let i = 1; i <= totalJogadores; i++) {
-            payload.jogadores.push({
+            configsJogadores.push({
                 nome: document.getElementById(`nome-${i}`).value || `Jogador ${i}`,
                 lane: opcaoSelecionada === 1 ? document.getElementById(`lane-${i}`).value : null,
                 sortearBuild: document.getElementById(`build-${i}`).checked
             });
         }
 
+        const payload = { opcaoSorteio: opcaoSelecionada, jogadores: configsJogadores };
+
         try {
-            // Alterado para caminho relativo para manter a sessão do Spring Security
             const response = await fetch('/api/sorteio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            const data = await response.json();
+            resultadosGlobais = await response.json();
 
-            // --- NOVO: Salvar cada resultado no banco de dados como PENDENTE ---
-            data.forEach(async (resultado) => {
-                try {
-                    await fetch('/api/partidas/salvar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            campeao: resultado.campeao,
-                            lane: resultado.lane,
-                            build: resultado.build
-                        })
-                    });
-                } catch (e) {
-                    console.error("Erro ao salvar no banco de dados:", e);
-                }
-            });
-            // -------------------------------------------------------------------
+            const radioSelecionado = document.querySelector('input[name="souEu"]:checked');
+            indexSouEuGlobal = radioSelecionado ? parseInt(radioSelecionado.value) - 1 : 0;
 
-            const resContainer = document.getElementById('resultado-container');
+            await salvarNoBanco(resultadosGlobais[indexSouEuGlobal]);
 
-            // Limpa o container e adiciona as classes para espaçamento
-            resContainer.className = "space-y-4";
-
-            resContainer.innerHTML = data.map(j => {
-                const champImgName = j.campeao.toLowerCase().replace(/[' ]/g, '');
-                const laneImgName = j.lane.toLowerCase();
-
-                let buildIconHtml = '';
-                let buildTextHtml = '';
-
-                if (j.build !== "Sem build adicional.") {
-                    let redeStr = "default";
-                    if(j.build.includes("WhatsApp")) redeStr = "whatsapp";
-                    if(j.build.includes("YouTube")) redeStr = "youtube";
-                    if(j.build.includes("Twitch")) redeStr = "twitch";
-                    if(j.build.includes("Facebook")) redeStr = "facebook";
-
-                    // Busca em /img/redes/
-                    buildIconHtml = `<img src="/img/redes/${redeStr}.png" alt="${redeStr}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/22c55e/ffffff?text=B'">`;
-                    buildTextHtml = `<span class="text-white text-sm font-medium capitalize">Build ${redeStr}</span>`;
-                } else {
-                    // Busca em /img/redes/ a imagem de "sem build"
-                    buildIconHtml = `<img src="/img/redes/nenhuma.png" alt="Sem build" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/555555/ffffff?text=X'">`;
-                    buildTextHtml = `<span class="text-gray-400 text-sm">Sem build</span>`;
-                }
-
-                return `
-            <div class="border border-gray-300 rounded p-4 bg-transparent relative">
-              <h3 class="text-white font-bold text-lg mb-4 leading-none">${j.nome}</h3>
-
-              <div class="flex flex-row gap-8 items-end">
-                <!-- Ícone da Lane (/img/lanes/) -->
-                <div class="flex flex-col items-center">
-                  <img src="/img/lanes/${laneImgName}.png" alt="${j.lane}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/333333/ffffff?text=${j.lane}'">
-                  <span class="text-white text-sm font-medium capitalize">${j.lane}</span>
-                </div>
-
-                <!-- Ícone do Campeão (/img/campeoes/) -->
-                <div class="flex flex-col items-center">
-                  <img src="/img/campeoes/${champImgName}.png" alt="${j.campeao}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/333333/ffffff?text=${j.campeao.substring(0,3)}'">
-                  <span class="text-white text-sm font-medium capitalize">${j.campeao}</span>
-                </div>
-
-                <!-- Ícone da Build (/img/redes/) -->
-                <div class="flex flex-col items-center">
-                  ${buildIconHtml}
-                  ${buildTextHtml}
-                </div>
-              </div>
-            </div>
-          `;
-            }).join('');
+            renderizarResultadosNaTela();
 
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-3').classList.remove('hidden');
         } catch (err) {
-            alert('Erro ao conectar com a API Spring Boot. Verifique se o backend Java está rodando.');
+            alert('Erro ao conectar com a API.');
         }
+    }
+
+    // Função ATUALIZADA: Sorteia novamente apenas o campeão e a build, travando a rota
+    async function refazerCampeao(indexJogador) {
+
+        // O SEGREDO AQUI: Forçamos a opçãoSorteio = 1 (Rota Fixa no backend)
+        // e passamos a lane que já foi sorteada e está aparecendo no card.
+        const payload = {
+            opcaoSorteio: 1,
+            jogadores: [
+                {
+                    nome: configsJogadores[indexJogador].nome,
+                    lane: resultadosGlobais[indexJogador].lane, // Trava a rota atual!
+                    sortearBuild: configsJogadores[indexJogador].sortearBuild
+                }
+            ]
+        };
+
+        try {
+            const response = await fetch('/api/sorteio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const novoSorteio = await response.json();
+
+            // Atualiza o resultado global com o novo campeão e build
+            resultadosGlobais[indexJogador].campeao = novoSorteio[0].campeao;
+            resultadosGlobais[indexJogador].build = novoSorteio[0].build;
+
+            // Se for o dono da conta que deu reroll, atualiza também no banco de dados
+            if (indexJogador === indexSouEuGlobal) {
+                await salvarNoBanco(resultadosGlobais[indexJogador]);
+            }
+
+            // Recarrega os cards visualmente na tela
+            renderizarResultadosNaTela();
+
+        } catch (err) {
+            alert("Erro ao refazer o sorteio desse jogador.");
+        }
+    }
+
+    async function salvarNoBanco(resultado) {
+        if (!resultado) return;
+        try {
+            await fetch('/api/partidas/salvar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    campeao: resultado.campeao,
+                    lane: resultado.lane,
+                    build: resultado.build
+                })
+            });
+        } catch (e) { console.error("Erro no DB:", e); }
+    }
+
+    function renderizarResultadosNaTela() {
+        const resContainer = document.getElementById('resultado-container');
+        resContainer.className = "space-y-4";
+
+        resContainer.innerHTML = resultadosGlobais.map((j, index) => {
+            const champImgName = j.campeao.toLowerCase().replace(/[' ]/g, '');
+            const laneImgName = j.lane.toLowerCase();
+
+            let buildIconHtml = '';
+            let buildTextHtml = '';
+
+            if (j.build !== "Sem build adicional.") {
+                let redeStr = "default";
+                if(j.build.includes("WhatsApp")) redeStr = "whatsapp";
+                if(j.build.includes("YouTube")) redeStr = "youtube";
+                if(j.build.includes("Twitch")) redeStr = "twitch";
+                if(j.build.includes("Facebook")) redeStr = "facebook";
+
+                buildIconHtml = `<img src="/img/redes/${redeStr}.png" alt="${redeStr}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/22c55e/ffffff?text=B'">`;
+                buildTextHtml = `<span class="text-white text-sm font-medium capitalize">Build ${redeStr}</span>`;
+            } else {
+                buildIconHtml = `<img src="/img/redes/nenhuma.png" alt="Sem build" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/555555/ffffff?text=X'">`;
+                buildTextHtml = `<span class="text-gray-400 text-sm">Sem build</span>`;
+            }
+
+            const cardHighlight = index === indexSouEuGlobal ? 'border-[#C79B3B] bg-gray-800' : 'border-gray-500 bg-transparent';
+
+            return `
+            <div class="border ${cardHighlight} rounded p-4 relative flex justify-between items-center">
+
+              <!-- Lado Esquerdo: Info do Jogador -->
+              <div>
+                  <h3 class="text-white font-bold text-lg mb-4 leading-none">${j.nome} ${index === indexSouEuGlobal ? '<span class="text-[#C79B3B] text-xs ml-2">(Sua Partida)</span>' : ''}</h3>
+                  <div class="flex flex-row gap-8 items-end">
+                    <div class="flex flex-col items-center">
+                      <img src="/img/lanes/${laneImgName}.png" alt="${j.lane}" class="w-12 h-12 rounded object-contain mb-2" onerror="this.src='https://via.placeholder.com/48/333333/ffffff?text=${j.lane}'">
+                      <span class="text-white text-sm font-medium capitalize">${j.lane}</span>
+                    </div>
+
+                    <div class="flex flex-col items-center">
+                      <img src="/img/campeoes/${champImgName}.png" alt="${j.campeao}" class="w-12 h-12 rounded object-cover mb-2" onerror="this.src='https://via.placeholder.com/48/333333/ffffff?text=${j.campeao.substring(0,3)}'">
+                      <span class="text-white text-sm font-medium capitalize">${j.campeao}</span>
+                    </div>
+
+                    <div class="flex flex-col items-center">
+                      ${buildIconHtml}
+                      ${buildTextHtml}
+                    </div>
+                  </div>
+              </div>
+
+              <!-- Lado Direito: Botão de Refazer -->
+              <div>
+                  <button onclick="refazerCampeao(${index})" class="hover:opacity-75 transition-opacity" title="Refazer Campeão">
+                      <img src="/img/refazer.png" onerror="this.src='/refazer.png'" class="w-10 h-10 object-contain cursor-pointer" alt="Refazer">
+                  </button>
+              </div>
+
+            </div>
+          `;
+        }).join('');
     }
 
     function reiniciar() {
